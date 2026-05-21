@@ -1,4 +1,10 @@
-import { onAuthStateChanged, signOut as fbSignOut, type User } from "firebase/auth";
+import {
+  isSignInWithEmailLink,
+  onAuthStateChanged,
+  signInWithEmailLink,
+  signOut as fbSignOut,
+  type User,
+} from "firebase/auth";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
 import { auth } from "../lib/firebase";
@@ -31,6 +37,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error("Failed to fetch profile", err);
       setProfile(null);
     }
+  }, []);
+
+  // If the user arrived via a magic link (sent by sendSignInLinkToEmail), the
+  // URL contains the sign-in tokens. Complete the sign-in before the normal
+  // auth listener fires — onAuthStateChanged will then pick up the new user.
+  useEffect(() => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return;
+    let email = window.localStorage.getItem("emailForSignIn");
+    if (!email) {
+      email = window.prompt("Confirm the email this link was sent to") || "";
+    }
+    if (!email) return;
+    signInWithEmailLink(auth, email, window.location.href)
+      .then(() => {
+        window.localStorage.removeItem("emailForSignIn");
+        // Strip the sign-in tokens from the address bar so reload doesn't re-run this.
+        window.history.replaceState({}, document.title, window.location.pathname);
+      })
+      .catch((err) => {
+        console.error("Email link sign-in failed", err);
+      });
   }, []);
 
   useEffect(() => {

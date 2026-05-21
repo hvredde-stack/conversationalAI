@@ -21,6 +21,7 @@ export interface MeResponse {
   business_id: string | null;
   role: "owner" | "admin" | "manager" | "staff" | "customer" | null;
   needs_onboarding: boolean;
+  is_platform_admin: boolean;
 }
 
 export async function fetchMe(forceRefresh = false): Promise<MeResponse> {
@@ -47,4 +48,82 @@ export async function getIdTokenForWs(): Promise<string> {
   const user = auth.currentUser;
   if (!user) throw new Error("Not signed in");
   return user.getIdToken();
+}
+
+// --- Documents (knowledge base) --------------------------------------------
+
+export interface DocumentRecord {
+  id: string;
+  business_id: string;
+  uploaded_by_uid: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  gcs_path: string;
+  status: "uploaded" | "processing" | "ready" | "failed";
+  error: string | null;
+  created_at: string;
+}
+
+export async function listDocuments(): Promise<DocumentRecord[]> {
+  const res = await authedFetch("/api/documents");
+  if (!res.ok) throw new Error(`List failed: ${res.status}`);
+  const data = await res.json();
+  return data.documents as DocumentRecord[];
+}
+
+export async function uploadDocument(file: File): Promise<DocumentRecord> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Not signed in");
+  const token = await user.getIdToken();
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE_URL}/api/documents`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Upload failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteDocument(docId: string): Promise<void> {
+  const res = await authedFetch(`/api/documents/${docId}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete failed: ${res.status}`);
+  }
+}
+
+// --- Platform admin --------------------------------------------------------
+
+export interface TenantSummary {
+  business_id: string;
+  name: string;
+  owner_uid: string;
+  owner_email: string | null;
+  created_at: string;
+  data_store_id: string | null;
+  data_store_ready: boolean;
+  user_count: number;
+  document_count: number;
+}
+
+export async function listTenants(): Promise<TenantSummary[]> {
+  const res = await authedFetch("/api/platform/tenants");
+  if (!res.ok) throw new Error(`List tenants failed: ${res.status}`);
+  const data = await res.json();
+  return data.tenants as TenantSummary[];
+}
+
+export async function fetchTenantDetail(businessId: string): Promise<{
+  tenant: TenantSummary;
+  users: Array<Record<string, unknown>>;
+  documents: Array<Record<string, unknown>>;
+}> {
+  const res = await authedFetch(`/api/platform/tenants/${businessId}`);
+  if (!res.ok) throw new Error(`Tenant detail failed: ${res.status}`);
+  return res.json();
 }

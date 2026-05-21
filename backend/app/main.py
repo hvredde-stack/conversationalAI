@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import auth as auth_api
 from app.api import businesses as business_api
 from app.api import chat as chat_api
+from app.api import documents as documents_api
+from app.api import platform as platform_api
 from app.auth.firebase import init_firebase
 from app.config import get_settings
 
@@ -31,6 +33,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_api.router)
     app.include_router(business_api.router)
     app.include_router(chat_api.router)
+    app.include_router(documents_api.router)
+    app.include_router(platform_api.router)
 
     @app.get("/health")
     def health() -> dict:

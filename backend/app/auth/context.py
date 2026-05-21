@@ -23,6 +23,7 @@ class TenantContext:
     email: str | None
     business_id: str | None  # None on first sign-in before business is created
     role: Role | None
+    is_platform_admin: bool = False
 
     def require_business(self) -> str:
         if not self.business_id:
@@ -35,6 +36,10 @@ class TenantContext:
                 f"Requires role '{minimum}' or higher (have '{self.role}')."
             )
 
+    def require_platform_admin(self) -> None:
+        if not self.is_platform_admin:
+            raise PermissionError("Platform admin only.")
+
 
 def context_from_claims(claims: dict) -> TenantContext:
     return TenantContext(
@@ -42,4 +47,5 @@ def context_from_claims(claims: dict) -> TenantContext:
         email=claims.get("email"),
         business_id=claims.get("business_id"),
         role=claims.get("role"),
+        is_platform_admin=bool(claims.get("is_platform_admin", False)),
     )

@@ -1,10 +1,14 @@
+import { Building2, ArrowRight, LogOut, Sparkles } from "lucide-react";
 import { useState } from "react";
 
+import { Button } from "../components/Button";
+import { Input } from "../components/Input";
+import { Logo } from "../components/Logo";
 import { useAuth } from "../contexts/AuthContext";
 import { createBusiness } from "../lib/api";
 
 export function CreateBusiness() {
-  const { refreshProfile, signOut } = useAuth();
+  const { refreshProfile, signOut, firebaseUser } = useAuth();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -15,7 +19,6 @@ export function CreateBusiness() {
     setBusy(true);
     try {
       await createBusiness(name.trim());
-      // Backend set custom claims; force a token refresh so the next /me sees them.
       await refreshProfile(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -25,48 +28,71 @@ export function CreateBusiness() {
   }
 
   return (
-    <div className="flex h-full items-center justify-center p-4">
-      <form
-        onSubmit={onSubmit}
-        className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-sm"
-      >
-        <h1 className="text-2xl font-semibold">Create your business</h1>
-        <p className="text-sm text-slate-600">
-          You'll become the owner. You can invite employees from settings later.
-        </p>
-
-        <label className="block text-sm">
-          <span className="text-slate-700">Business name</span>
-          <input
-            type="text"
-            required
-            minLength={1}
-            maxLength={120}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Acme Apparel"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
-          />
-        </label>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
+    <div className="relative min-h-full bg-slate-50">
+      <header className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 sm:p-6">
+        <Logo />
         <button
-          type="submit"
-          disabled={busy || !name.trim()}
-          className="w-full rounded-lg bg-slate-900 px-4 py-2 text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {busy ? "Creating…" : "Create business"}
-        </button>
-
-        <button
-          type="button"
           onClick={signOut}
-          className="w-full text-center text-sm text-slate-500 hover:text-slate-700"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 transition"
         >
+          <LogOut className="h-4 w-4" />
           Sign out
         </button>
-      </form>
+      </header>
+
+      <main className="flex min-h-screen items-center justify-center p-6">
+        <div className="w-full max-w-md animate-slide-up">
+          <div className="text-center mb-8">
+            <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-navy-800 shadow-card ring-2 ring-gold-400/40">
+              <Building2 className="h-7 w-7 text-gold-400" />
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-navy-800">
+              Set up your business
+            </h1>
+            <p className="mt-2 text-sm text-navy-500">
+              You'll become the owner. Aria will refer to your business by this name when greeting your team and customers.
+            </p>
+          </div>
+
+          <form
+            onSubmit={onSubmit}
+            className="rounded-2xl bg-white shadow-card border border-navy-100 p-6 space-y-5"
+          >
+            <Input
+              label="Business name"
+              name="business_name"
+              required
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Acme Apparel"
+              hint="Aria will say this when introducing herself."
+            />
+
+            {error && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {error}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              size="lg"
+              loading={busy}
+              disabled={!name.trim()}
+              className="w-full"
+              rightIcon={<ArrowRight className="h-4 w-4" />}
+            >
+              Create business
+            </Button>
+          </form>
+
+          <div className="mt-6 flex items-center gap-2 text-xs text-navy-500 justify-center">
+            <Sparkles className="h-3.5 w-3.5 text-gold-500" />
+            Signed in as <span className="text-navy-700 font-medium">{firebaseUser?.email}</span>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }

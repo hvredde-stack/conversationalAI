@@ -13,7 +13,7 @@
 [CmdletBinding()]
 param()
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location (Join-Path $repoRoot "backend")
 

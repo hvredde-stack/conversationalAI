@@ -13,14 +13,22 @@ from google.genai import types
 
 from app.config import get_settings
 
+# Module-level singleton so the underlying httpx client isn't recreated per
+# call (which was causing "Cannot send a request, as the client has been
+# closed" mid-stream).
+_client_instance: genai.Client | None = None
+
 
 def _client() -> genai.Client:
-    settings = get_settings()
-    return genai.Client(
-        vertexai=True,
-        project=settings.gcp_project_id,
-        location=settings.vertex_location,
-    )
+    global _client_instance
+    if _client_instance is None:
+        settings = get_settings()
+        _client_instance = genai.Client(
+            vertexai=True,
+            project=settings.gcp_project_id,
+            location=settings.vertex_location,
+        )
+    return _client_instance
 
 
 async def stream_chat(
@@ -29,7 +37,7 @@ async def stream_chat(
     system_prompt: str | None = None,
     model: str | None = None,
 ) -> AsyncIterator[str]:
-    """Stream tokens from Gemini.
+    """Stream tokens from Gemini via Vertex AI (async).
 
     messages: [{"role": "user" | "assistant", "content": "..."}, ...]
     """
@@ -49,12 +57,14 @@ async def stream_chat(
         temperature=0.7,
     )
 
-    stream = _client().models.generate_content_stream(
+    # client.aio.* is the async API surface — keeps the httpx client alive for
+    # the lifetime of the stream and plays nicely with FastAPI's event loop.
+    stream = await _client().aio.models.generate_content_stream(
         model=model_name,
         contents=contents,
         config=config,
     )
 
-    for chunk in stream:
+    async for chunk in stream:
         if chunk.text:
             yield chunk.text

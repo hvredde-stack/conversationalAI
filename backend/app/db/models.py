@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field
 
 Role = Literal["owner", "admin", "manager", "staff", "customer"]
+DocumentStatus = Literal["uploaded", "processing", "ready", "failed"]
 
 
 class Business(BaseModel):
@@ -13,9 +14,9 @@ class Business(BaseModel):
     name: str
     owner_uid: str
     created_at: datetime
-    data_store_id: str | None = None  # Vertex AI Search Data Store, set by Phase 1.5
+    data_store_id: str | None = None
     data_store_ready: bool = False
-    widget_api_key: str | None = None  # Phase 2
+    widget_api_key: str | None = None
 
 
 class UserDoc(BaseModel):
@@ -38,6 +39,19 @@ class Invite(BaseModel):
     created_at: datetime
 
 
+class Document(BaseModel):
+    id: str
+    business_id: str
+    uploaded_by_uid: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    gcs_path: str
+    status: DocumentStatus = "uploaded"
+    error: str | None = None
+    created_at: datetime
+
+
 # --- API request/response payloads -------------------------------------------
 
 class CreateBusinessRequest(BaseModel):
@@ -54,4 +68,9 @@ class MeResponse(BaseModel):
     email: str | None
     business_id: str | None
     role: Role | None
-    needs_onboarding: bool  # True when user has no business yet
+    needs_onboarding: bool
+    is_platform_admin: bool = False
+
+
+class DocumentListResponse(BaseModel):
+    documents: list[Document]
