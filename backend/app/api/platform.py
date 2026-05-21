@@ -8,15 +8,23 @@ admin role first. There is no path where a regular business owner can reach
 data from another business.
 """
 
-from datetime import datetime
+import re
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from app.agent.catalog import (
+    delete_catalog_tool,
+    get_catalog_tool,
+    list_catalog,
+    save_catalog_tool,
+)
 from app.auth.context import TenantContext
 from app.auth.middleware import current_user
 from app.db.firestore import businesses_col, documents_col, tenant_scoped_query, users_col
+from app.db.models import CatalogTool, Role, WebhookDef
 
 router = APIRouter(prefix="/api/platform", tags=["platform"])
 
@@ -135,3 +143,80 @@ async def tenant_detail(
         users=[u for u in users if u],
         documents=[d for d in docs if d],
     )
+
+
+# --- Tool catalog management (the marketplace) -------------------------------
+
+_NAME_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+class CatalogToolUpsert(BaseModel):
+    tool_id: str = Field(min_length=1, max_length=64)
+    name: str  # function name exposed to Gemini — must be an identifier
+    display_name: str
+    description: str
+    parameters: dict = Field(default_factory=dict)
+    webhook: WebhookDef
+    config_schema: dict = Field(default_factory=dict)
+    min_role: Role = "customer"
+    requires_confirmation: bool = False
+
+
+class CatalogListResponse(BaseModel):
+    tools: list[CatalogTool]
+
+
+@router.get("/catalog", response_model=CatalogListResponse)
+async def list_catalog_tools(
+    ctx: TenantContext = Depends(current_user),
+) -> CatalogListResponse:
+    _require_platform_admin(ctx)
+    return CatalogListResponse(tools=list_catalog())
+
+
+@router.post("/catalog", response_model=CatalogTool, status_code=status.HTTP_201_CREATED)
+async def upsert_catalog_tool(
+    body: CatalogToolUpsert,
+    ctx: TenantContext = Depends(current_user),
+) -> CatalogTool:
+    """Publish (or update) a webhook tool in the marketplace catalog."""
+    _require_platform_admin(ctx)
+    if not _NAME_RE.match(body.name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="name must be a valid identifier (letters, digits, underscore).",
+        )
+    if not _ID_RE.match(body.tool_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="tool_id must be lowercase letters, digits, and hyphens.",
+        )
+
+    # Preserve original creation metadata when updating an existing tool.
+    existing = get_catalog_tool(body.tool_id)
+    tool = CatalogTool(
+        tool_id=body.tool_id,
+        name=body.name,
+        display_name=body.display_name,
+        description=body.description,
+        parameters=body.parameters,
+        executor_type="webhook",
+        webhook=body.webhook,
+        config_schema=body.config_schema,
+        min_role=body.min_role,
+        requires_confirmation=body.requires_confirmation,
+        created_at=existing.created_at if existing else datetime.now(UTC),
+        created_by_uid=existing.created_by_uid if existing else ctx.uid,
+    )
+    save_catalog_tool(tool)
+    return tool
+
+
+@router.delete("/catalog/{tool_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_catalog_tool(
+    tool_id: str,
+    ctx: TenantContext = Depends(current_user),
+) -> None:
+    _require_platform_admin(ctx)
+    delete_catalog_tool(tool_id)
