@@ -39,6 +39,16 @@ def documents_col() -> firestore.CollectionReference:
     return get_db().collection("documents")
 
 
+def tools_col() -> firestore.CollectionReference:
+    """Platform-curated tool catalog (the marketplace)."""
+    return get_db().collection("tools")
+
+
+def tool_configs_col(business_id: str) -> firestore.CollectionReference:
+    """A business's per-tool settings — a subcollection of its business doc."""
+    return businesses_col().document(business_id).collection("tool_configs")
+
+
 def tenant_scoped_query(
     col: firestore.CollectionReference, business_id: str
 ) -> firestore.Query:

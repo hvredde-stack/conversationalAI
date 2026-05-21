@@ -81,7 +81,7 @@ async def run_agent(
     via `on_text` and tool-status updates via `on_event`. Returns the full
     assistant answer (for the caller to append to its history).
     """
-    tools = get_registry().resolve(ctx.tenant)
+    tools = await get_registry().resolve(ctx.tenant)
     by_name = {t.name: t for t in tools}
     gemini_tools = (
         [types.Tool(function_declarations=_declarations(tools))] if tools else None
