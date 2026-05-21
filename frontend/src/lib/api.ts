@@ -186,3 +186,74 @@ export async function listToolActivity(): Promise<ToolCallRecord[]> {
   const data = await res.json();
   return data.calls as ToolCallRecord[];
 }
+
+// --- Platform: tool catalog ------------------------------------------------
+
+export interface WebhookAuth {
+  type: "none" | "bearer" | "header";
+  header_name: string | null;
+  secret_key: string | null;
+}
+
+export interface WebhookDef {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  url_template: string;
+  auth: WebhookAuth;
+  timeout_s: number;
+}
+
+export interface CatalogTool {
+  tool_id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  executor_type: string;
+  webhook: WebhookDef | null;
+  config_schema: Record<string, unknown>;
+  min_role: string;
+  requires_confirmation: boolean;
+  created_at: string;
+  created_by_uid: string;
+}
+
+export interface CatalogToolInput {
+  tool_id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+  webhook: WebhookDef;
+  config_schema: Record<string, unknown>;
+  min_role: string;
+  requires_confirmation: boolean;
+}
+
+export async function listCatalog(): Promise<CatalogTool[]> {
+  const res = await authedFetch("/api/platform/catalog");
+  if (!res.ok) throw new Error(`Catalog failed: ${res.status}`);
+  return (await res.json()).tools as CatalogTool[];
+}
+
+export async function upsertCatalogTool(
+  body: CatalogToolInput,
+): Promise<CatalogTool> {
+  const res = await authedFetch("/api/platform/catalog", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Publish failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function deleteCatalogTool(toolId: string): Promise<void> {
+  const res = await authedFetch(`/api/platform/catalog/${toolId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`Delete failed: ${res.status}`);
+  }
+}
