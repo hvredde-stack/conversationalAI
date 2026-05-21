@@ -14,7 +14,10 @@ class Settings(BaseSettings):
 
     vertex_location: str = "us-central1"
     gemini_model: str = "gemini-2.5-pro"
-    gemini_fast_model: str = "gemini-2.5-flash"
+    # gemini-3.5-flash is served only via the "global" Vertex endpoint, not
+    # us-central1. When the router path is built, the fast model must be called
+    # with a genai.Client created at location="global".
+    gemini_fast_model: str = "gemini-3.5-flash"
 
     app_env: str = "dev"
     log_level: str = "INFO"
