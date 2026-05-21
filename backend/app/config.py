@@ -12,11 +12,10 @@ class Settings(BaseSettings):
 
     gcs_uploads_bucket: str
 
-    vertex_location: str = "us-central1"
-    gemini_model: str = "gemini-2.5-pro"
-    # gemini-3.5-flash is served only via the "global" Vertex endpoint, not
-    # us-central1. When the router path is built, the fast model must be called
-    # with a genai.Client created at location="global".
+    # gemini-3.5-flash is served only via the "global" Vertex endpoint, so the
+    # Vertex client location is "global" (distinct from the Cloud Run region).
+    vertex_location: str = "global"
+    gemini_model: str = "gemini-3.5-flash"
     gemini_fast_model: str = "gemini-3.5-flash"
 
     app_env: str = "dev"

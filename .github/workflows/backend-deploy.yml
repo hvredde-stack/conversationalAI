@@ -39,7 +39,7 @@ jobs:
             --service-account "${{ secrets.WIF_SERVICE_ACCOUNT }}" \
             --allow-unauthenticated \
             --quiet \
-            --set-env-vars "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},FIREBASE_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},GCS_UPLOADS_BUCKET=${{ vars.GCP_PROJECT_ID }}-uploads,VERTEX_LOCATION=${{ vars.GCP_REGION }},APP_ENV=prod,FRONTEND_ORIGIN=${{ vars.FRONTEND_ORIGIN }}"
+            --set-env-vars "GCP_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},FIREBASE_PROJECT_ID=${{ vars.GCP_PROJECT_ID }},GCS_UPLOADS_BUCKET=${{ vars.GCP_PROJECT_ID }}-uploads,VERTEX_LOCATION=${{ vars.VERTEX_LOCATION }},GEMINI_MODEL=${{ vars.GEMINI_MODEL }},GEMINI_FAST_MODEL=${{ vars.GEMINI_FAST_MODEL }},APP_ENV=prod,FRONTEND_ORIGIN=${{ vars.FRONTEND_ORIGIN }}"
 
       - name: Print service URL
         run: |
