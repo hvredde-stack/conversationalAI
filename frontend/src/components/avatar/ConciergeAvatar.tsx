@@ -41,7 +41,7 @@ export function ConciergeAvatar({
         // Transparent background so the avatar sits on any page surface.
         gl={{ antialias: true, alpha: true }}
         dpr={[1, 2]}
-        camera={{ position: [0, 1.5, 2.6], fov: 30 }}
+        camera={{ position: [0, 0, 2.7], fov: 32 }}
       >
         <ambientLight intensity={0.9} />
         <directionalLight position={[2, 4, 3]} intensity={1.3} />

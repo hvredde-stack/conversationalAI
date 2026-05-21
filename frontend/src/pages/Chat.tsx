@@ -8,14 +8,22 @@ import {
   Sparkles,
   WifiOff,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { AvatarState } from "../components/avatar/ConciergeAvatar";
 import { Logo } from "../components/Logo";
 import { MessageBubble } from "../components/MessageBubble";
 import { TypingIndicator } from "../components/TypingIndicator";
 import { useAuth } from "../contexts/AuthContext";
 import { getIdTokenForWs, WS_BASE_URL } from "../lib/api";
+
+// Lazy-loaded so three.js (~150 KB gzipped) stays out of the initial bundle.
+const ConciergeAvatar = lazy(() =>
+  import("../components/avatar/ConciergeAvatar").then((m) => ({
+    default: m.ConciergeAvatar,
+  })),
+);
 
 interface Message {
   role: "user" | "assistant";
@@ -113,6 +121,16 @@ export function Chat() {
 
   const role = profile?.role ?? "member";
 
+  // Map the live chat lifecycle onto the avatar's animation state.
+  const lastRole = messages[messages.length - 1]?.role;
+  const avatarState: AvatarState = streaming
+    ? lastRole === "assistant"
+      ? "speaking" // tokens are streaming in
+      : "thinking" // waiting on the model's first token
+    : input.trim()
+      ? "listening" // user is composing a message
+      : "idle";
+
   return (
     <div className="flex h-full bg-navy-50">
       {/* Sidebar */}
@@ -141,10 +159,22 @@ export function Chat() {
               <ChevronLeft className="h-5 w-5 rotate-180" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="relative grid h-10 w-10 place-items-center rounded-full bg-navy-800 shadow-soft ring-1 ring-gold-400/40">
-                <span className="font-display text-base font-bold text-gold-400">A</span>
+              <div className="relative h-14 w-14 flex-shrink-0">
+                <div className="h-full w-full overflow-hidden rounded-full bg-navy-800 shadow-soft ring-1 ring-gold-400/40">
+                  <Suspense
+                    fallback={
+                      <div className="grid h-full w-full place-items-center">
+                        <span className="font-display text-base font-bold text-gold-400">
+                          A
+                        </span>
+                      </div>
+                    }
+                  >
+                    <ConciergeAvatar state={avatarState} />
+                  </Suspense>
+                </div>
                 {connected && (
-                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-white" />
+                  <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-white" />
                 )}
               </div>
               <div className="leading-tight">
