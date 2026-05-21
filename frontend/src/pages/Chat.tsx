@@ -208,7 +208,7 @@ export function Chat() {
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 py-6 sm:py-10">
             {messages.length === 0 ? (
-              <EmptyState onPick={(text) => send(text)} />
+              <EmptyState onPick={(text) => send(text)} avatarState={avatarState} />
             ) : (
               <div className="space-y-5">
                 {messages.map((m, i) => (
@@ -379,15 +379,29 @@ function Sidebar({
   );
 }
 
-function EmptyState({ onPick }: { onPick: (text: string) => void }) {
+function EmptyState({
+  onPick,
+  avatarState,
+}: {
+  onPick: (text: string) => void;
+  avatarState: AvatarState;
+}) {
   return (
     <div className="flex flex-col items-center text-center py-8 sm:py-16 animate-fade-in">
       <div className="relative mb-5">
-        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-navy-800 shadow-card ring-2 ring-gold-400/40">
-          <span className="font-display text-2xl font-bold text-gold-400">A</span>
+        <div className="h-44 w-44 overflow-hidden rounded-full bg-navy-800 shadow-card ring-2 ring-gold-400/40">
+          <Suspense
+            fallback={
+              <div className="grid h-full w-full place-items-center">
+                <span className="font-display text-4xl font-bold text-gold-400">A</span>
+              </div>
+            }
+          >
+            <ConciergeAvatar state={avatarState} />
+          </Suspense>
         </div>
-        <div className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-gold-400 text-navy-900 shadow-soft">
-          <Sparkles className="h-3 w-3" />
+        <div className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-gold-400 text-navy-900 shadow-soft">
+          <Sparkles className="h-3.5 w-3.5" />
         </div>
       </div>
       <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-navy-800">
