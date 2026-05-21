@@ -5,6 +5,7 @@ Protocol:
   Server replies with {"type": "ready"} or {"type": "error", ...}
   Client sends:  {"type": "user_message", "content": "..."}
   Server streams: {"type": "token", "content": "..."} (many)
+                  {"type": "tool", "name": "...", "status": "running"|"done"}
                   {"type": "done"}
 """
 
@@ -13,10 +14,10 @@ import logging
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect, status
 
+from app.agent.orchestrator import run_agent
+from app.agent.tools import ToolContext
 from app.auth.middleware import verify_token_string
 from app.db.firestore import businesses_col
-from app.llm.vertex import stream_chat
-from app.rag.retrieve import format_context, retrieve_for_query
 
 log = logging.getLogger(__name__)
 
@@ -47,9 +48,15 @@ two-line answer. A complex ask gets structure.
 emphasis), but don't overuse it.
 - Close with a soft offer to keep helping when natural, e.g. "Anything else \
 I can take off your plate?" — but skip it if the reply is already complete.
-- Never invent company facts. If asked something specific to {business_name} \
-that you don't know, say your knowledge base is being set up and offer to \
-help with what you can in the meantime.
+- Never invent company facts. For anything specific to {business_name}, use \
+the query_business_knowledge tool to look it up — don't guess.
+
+TOOLS:
+- query_business_knowledge: searches {business_name}'s knowledge base. Use it \
+whenever the user asks about the business's services, pricing, packages, \
+policies, hours, availability, or documents. Search before answering such a \
+question, and feel free to search again with a refined query. If it returns \
+nothing, tell the user the knowledge base doesn't cover that yet.
 
 CONTEXT:
 - You are speaking with a person whose role is: {role}.
@@ -106,29 +113,32 @@ async def chat_ws(ws: WebSocket, token: str = Query(...)) -> None:
 
             history.append({"role": "user", "content": content})
 
-            # RAG: query the business's Data Store. Falls back to no-context
-            # if the data store isn't ready yet, has no docs, or errors.
-            chunks = retrieve_for_query(ctx.business_id, content, top_k=5)
-            rag_context = format_context(chunks)
-
             system = SYSTEM_PROMPT_TEMPLATE.format(
                 business_name=business_name,
                 role=ctx.role or "member",
             )
-            if rag_context:
-                system = f"{system}\n\n{rag_context}"
+            tool_ctx = ToolContext(tenant=ctx, business_name=business_name)
 
-            assistant_buffer = ""
+            async def on_text(text: str) -> None:
+                await ws.send_json({"type": "token", "content": text})
+
+            async def on_event(event: dict) -> None:
+                await ws.send_json(event)
+
             try:
-                async for token_text in stream_chat(history, system_prompt=system):
-                    assistant_buffer += token_text
-                    await ws.send_json({"type": "token", "content": token_text})
+                answer = await run_agent(
+                    history=history,
+                    system_prompt=system,
+                    ctx=tool_ctx,
+                    on_text=on_text,
+                    on_event=on_event,
+                )
             except Exception:
-                log.exception("LLM streaming failed")
+                log.exception("Agent run failed")
                 await ws.send_json({"type": "error", "code": "llm_failure"})
                 continue
 
-            history.append({"role": "assistant", "content": assistant_buffer})
+            history.append({"role": "assistant", "content": answer})
             await ws.send_json({"type": "done"})
 
     except WebSocketDisconnect:
