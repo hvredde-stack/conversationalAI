@@ -9,6 +9,7 @@ import { Platform } from "./pages/Platform";
 import { Settings } from "./pages/Settings";
 import { Signup } from "./pages/Signup";
 import { Team } from "./pages/Team";
+import { Tools } from "./pages/Tools";
 
 function FullScreenSpinner() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
       <Route path="/chat" element={<Chat />} />
       <Route path="/admin" element={<Navigate to="/admin/knowledge" replace />} />
       <Route path="/admin/knowledge" element={<Knowledge />} />
+      <Route path="/admin/tools" element={<Tools />} />
       <Route path="/admin/team" element={<Team />} />
       <Route path="/admin/settings" element={<Settings />} />
       <Route path="/knowledge" element={<Navigate to="/admin/knowledge" replace />} />

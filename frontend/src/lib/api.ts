@@ -127,3 +127,62 @@ export async function fetchTenantDetail(businessId: string): Promise<{
   if (!res.ok) throw new Error(`Tenant detail failed: ${res.status}`);
   return res.json();
 }
+
+// --- Tool marketplace ------------------------------------------------------
+
+export interface ToolView {
+  tool_id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  kind: "builtin" | "webhook";
+  enabled: boolean;
+  configurable: boolean;
+  min_role: string;
+  requires_confirmation: boolean;
+  config_schema: Record<string, unknown>;
+  config: Record<string, unknown>;
+  needs_secrets: string[];
+  has_secrets: string[];
+}
+
+export interface ToolCallRecord {
+  tool: string;
+  ok: boolean;
+  error: string | null;
+  latency_ms: number | null;
+  created_at: string | null;
+}
+
+export async function listTools(): Promise<ToolView[]> {
+  const res = await authedFetch("/api/tools");
+  if (!res.ok) throw new Error(`List tools failed: ${res.status}`);
+  const data = await res.json();
+  return data.tools as ToolView[];
+}
+
+export async function updateTool(
+  toolId: string,
+  body: {
+    enabled: boolean;
+    config: Record<string, unknown>;
+    secrets: Record<string, string>;
+  },
+): Promise<ToolView> {
+  const res = await authedFetch(`/api/tools/${toolId}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const detail = await res.text();
+    throw new Error(detail || `Update failed: ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function listToolActivity(): Promise<ToolCallRecord[]> {
+  const res = await authedFetch("/api/tools/activity");
+  if (!res.ok) throw new Error(`Activity failed: ${res.status}`);
+  const data = await res.json();
+  return data.calls as ToolCallRecord[];
+}

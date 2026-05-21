@@ -1,4 +1,12 @@
-import { BookOpen, ChevronLeft, LogOut, Settings, ShieldAlert, Users } from "lucide-react";
+import {
+  BookOpen,
+  ChevronLeft,
+  LogOut,
+  Settings,
+  ShieldAlert,
+  Users,
+  Wrench,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 
@@ -49,6 +57,9 @@ export function AdminLayout({ children }: Props) {
           </div>
           <SidebarLink to="/admin/knowledge" icon={<BookOpen className="h-4 w-4" />}>
             Knowledge base
+          </SidebarLink>
+          <SidebarLink to="/admin/tools" icon={<Wrench className="h-4 w-4" />}>
+            Tools
           </SidebarLink>
           <SidebarLink to="/admin/team" icon={<Users className="h-4 w-4" />}>
             Team
